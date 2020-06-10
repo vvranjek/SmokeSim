@@ -9,8 +9,9 @@
 //#include <DmxSimple.h>
 #include <EEPROMex.h>
 
-#define PIN_MORSE 13
-#define PIN_LIGHT 10
+#define PIN_MORSE 10
+#define PIN_LIGHT 5
+#define PIN_SIM900_ON 9
 #define DMX_CH_FAN 100
 #define DMX_CH_INTENSITY 101
 #define PIN_DMX_JDI 3
@@ -18,6 +19,8 @@
 #define PIN_DMX_JRDE 2
 #define PIN_DMX_LED1 7
 #define PIN_DMX_LED2 8
+
+static unsigned long SOS_AUTO_TIME_MS = 60000*10;
 
 #define EEPROM_MORSE_SPEED_ADDR 10
 
@@ -36,7 +39,9 @@ unsigned long sos_ts = millis();
 // LCD keypad
 //LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 //LCDKeypad lcdKeypad(PIN_A0, &lcd);
-LEDMorseSender morse(PIN_MORSE);
+LEDMorseSender morse_smoke(PIN_MORSE);
+LEDMorseSender morse_light(PIN_LIGHT);
+
 
 
 void printLcd(char* text);
@@ -51,9 +56,17 @@ String get_number(char* buf);
 
 
 void setup() {
+    morse_smoke.set_multi(0.7f);
+    morse_light.set_multi(1.0);
     Serial.println("Starting setup");
 
-    morse.setup();
+    digitalWrite(PIN_SIM900_ON, HIGH);
+    delay(1000);
+    digitalWrite(9, LOW);
+    delay(5000);
+
+    morse_smoke.setup();
+    morse_light.setup();
 
     SIM900.begin(9600);
     Serial.begin(115200);
@@ -79,8 +92,9 @@ void setup() {
 
 
     uint16_t morse_speed = EEPROM.readInt(EEPROM_MORSE_SPEED_ADDR);
-    if (morse_speed > 1 && morse_speed < 2000) {
-        morse.setSpeed((morseTiming_t)morse_speed);
+    if (morse_speed > 1 && morse_speed < 20000) {
+        morse_smoke.setSpeed((morseTiming_t)morse_speed);
+        morse_light.setSpeed((morseTiming_t)morse_speed);
     }
     else {
         morse_speed = 500;
@@ -89,28 +103,38 @@ void setup() {
     
     Serial.print("Morse speed set to: ");
     Serial.println(morse_speed);
-
     Serial.println("Setup complete");
-
-    delay(1000);
-
-    //check_msg((char const *)"TIME=19.9");
 }
 
 
 void loop() {
     // Display any text that the GSM shield sends out on the serial monitor
     process_ss();
-    process_morse();
-    sos_auto();
+    if (!process_morse()) {
+        sos_auto();
+    }
+    else {
+        sos_ts = millis();
+    }
+    delay(50);
 }
+
+
+
+//SOS_AUTO_TIME_MS
 
 void sos_auto() 
 {
-    if (millis() - sos_ts > 1000*60*5) {
+    unsigned long diff = millis() - sos_ts;
+    //Serial.println(diff);
+    //Serial.println(SOS_AUTO_TIME_MS);
+
+    if (diff > SOS_AUTO_TIME_MS) {
         sos_ts = millis();
-        morse.setMessage("sos");
-        morse.startSending();
+        morse_smoke.setMessage("sos");
+        morse_smoke.startSending();
+        morse_light.setMessage("sos");
+        morse_light.startSending();
     }
 }
 
@@ -151,8 +175,17 @@ bool process_ss(unsigned long timout = 0)
                 Serial.println(morse_str);
                 Serial.print("Setting morse to: ");
                 Serial.print(morse_str);
-                morse.setMessage(morse_str);
-                morse.startSending();
+                morse_smoke.setMessage(morse_str);
+                morse_smoke.startSending();
+                morse_light.setMessage(morse_str);
+                morse_light.startSending();
+
+                String return_sms;
+                return_sms.concat("From:");
+                return_sms.concat(incoming_number);
+                return_sms.concat(" SMS: ");
+                return_sms.concat(in_str);
+                send_sms("+38631882449", return_sms);
             }
         }
     } while (millis() - ts < timout);
@@ -163,12 +196,12 @@ bool process_ss(unsigned long timout = 0)
 
 bool process_morse() 
 {
-    if (morse.continueSending()) {
-        //digitalWrite(PIN_LIGHT, morse.getState());
+    morse_light.continueSending();
+
+    if (morse_smoke.continueSending()) {
         return true;
     }
     else {
-        //digitalWrite(PIN_LIGHT, LOW);
         return false;
     }
 } 
@@ -202,7 +235,8 @@ uint16_t check_msg(char const *buf, char *return_ptr = 0, uint16_t *ret_val = 0)
                 Serial.println(wpm_int);
 
                 //morse.setWPM((morseTiming_t)wpm_int);
-                morse.setSpeed((morseTiming_t)wpm_int);
+                morse_smoke.setSpeed((morseTiming_t)wpm_int);
+                morse_light.setSpeed((morseTiming_t)wpm_int);
 
                 EEPROM.writeInt(EEPROM_MORSE_SPEED_ADDR, wpm_int);
                 ret = wpm_int;

@@ -19,8 +19,11 @@ int MorseSender::copyTimings(
 			if (isDah) { foundSentinel = true; }
 			continue;
 		}
-		rawOut[2*t] = isDah ? DAH : DIT;
-		rawOut[2*t + 1] = DIT;
+
+		morseTiming_t extra = DIT - (DIT*on_multi);
+
+		rawOut[2*t] = isDah ? DAH-extra : DIT-extra;
+		rawOut[2*t + 1] = DIT+extra;
 		t++;
 	}
 	return t;
@@ -43,8 +46,9 @@ unsigned int MorseSender::fillTimings(char c)
 		}
 		while(t < 5)
 		{
-			timingBuffer[2*t] = ((t < n) == ditsFirst) ? DIT : DAH;
-			timingBuffer[2*t + 1] = DIT;
+			morseTiming_t extra = DIT - (DIT*on_multi);
+			timingBuffer[2*t] = ((t < n) == ditsFirst) ? DIT-extra : DAH-extra;
+			timingBuffer[2*t + 1] = DIT+extra;
 			t++;
 		}
 	}
@@ -66,11 +70,16 @@ unsigned int MorseSender::fillTimings(char c)
 			start = t = 1; // start on a space
 		}
 	}
+	morseTiming_t extra = DIT - (DIT*on_multi);
 
-	timingBuffer[2*t - 1] = DAH;
+	if (c == 32) {
+		extra = 0.0;
+	}
+
+	timingBuffer[2*t - 1] = DAH+extra;
 	timingBuffer[2*t] = END;
 
-	/*
+	
 	Serial.print("Refilled timing buffer for '");
 	Serial.print(c);
 	Serial.print("': ");
@@ -82,7 +91,7 @@ unsigned int MorseSender::fillTimings(char c)
 		i++;
 	}
 	Serial.println("END");
-	*/
+	
 
 	return start;
 }
@@ -107,6 +116,10 @@ void MorseSender::setWPM(float wpm)
 {
 	WPM = wpm;
 	setSpeed((morseTiming_t)(1000.0*60.0/(max(1.0f, wpm)*DITS_PER_WORD)));
+}
+
+void MorseSender::set_multi(float multi) {
+	on_multi = multi;
 }
 
 float MorseSender::getWPM() {
@@ -219,8 +232,10 @@ SpeakerMorseSender::SpeakerMorseSender(
 
 void LEDMorseSender::setOn() {  digitalWrite(pin, activeLow ? LOW : HIGH);}
 void LEDMorseSender::setOff() { digitalWrite(pin, activeLow ? HIGH : LOW); }
-LEDMorseSender::LEDMorseSender(int outputPin, bool activeLow, float wpm)
-	: MorseSender(outputPin, wpm), activeLow(activeLow) {};
+LEDMorseSender::LEDMorseSender(int outputPin, float on_multiplier,bool activeLow, float wpm)
+	: MorseSender(outputPin, wpm), activeLow(activeLow) {
+		on_multi = on_multiplier;
+	};
 LEDMorseSender::LEDMorseSender(int outputPin, float wpm)
 	: MorseSender(outputPin, wpm), activeLow(false) {};
 
