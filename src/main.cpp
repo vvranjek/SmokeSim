@@ -23,6 +23,7 @@
 static unsigned long SOS_AUTO_TIME_MS = 60000*10;
 
 #define EEPROM_MORSE_SPEED_ADDR 10
+#define EEPROM_MORSE_PAUSE_ADDR 20
 
 
 
@@ -47,7 +48,7 @@ LEDMorseSender morse_light(PIN_LIGHT);
 void printLcd(char* text);
 void read_line();
 char get_char();
-uint16_t check_msg(char const *buf, char* return_ptr = 0, uint16_t *ret_val = 0);
+uint16_t check_msg(char const *buf, String phone_number, char *return_ptr = 0, uint16_t *ret_val = 0);
 bool process_morse();
 void send_sms(String number, String text);
 bool process_ss(unsigned long timout = 0);
@@ -56,8 +57,8 @@ String get_number(char* buf);
 
 
 void setup() {
-    morse_smoke.set_multi(0.7f);
-    morse_light.set_multi(1.0);
+    morse_smoke.set_multi(0.0f);
+    morse_light.set_multi(0.0f);
     Serial.println("Starting setup");
 
     digitalWrite(PIN_SIM900_ON, HIGH);
@@ -100,10 +101,19 @@ void setup() {
         morse_speed = 500;
         EEPROM.writeInt(EEPROM_MORSE_SPEED_ADDR, morse_speed);
     }
+
+    uint16_t morse_pause = EEPROM.readInt(EEPROM_MORSE_PAUSE_ADDR);
+    morse_smoke.set_multi((morseTiming_t)morse_pause);
+    morse_light.set_multi((morseTiming_t)morse_pause);
     
     Serial.print("Morse speed set to: ");
     Serial.println(morse_speed);
     Serial.println("Setup complete");
+
+    // morse_smoke.setMessage("sos");
+    // morse_smoke.startSending();
+    // morse_light.setMessage("sos");
+    // morse_light.startSending();
 }
 
 
@@ -158,17 +168,9 @@ bool process_ss(unsigned long timout = 0)
                 Serial.print("SMS received: ");
                 Serial.println(in_str);
    
-                uint16_t time = check_msg(in_str);
-                if (time > 0) {
-                    String out = "Time is set to ";
-                    out.concat(String(time));
-
-                    Serial.println(out);
-
-                    send_sms(incoming_number, out);
+                if (check_msg(in_str, incoming_number)) {
                     return;
                 }
-
                 
                 String morse_str(in_str);
                 morse_str.toLowerCase();
@@ -208,7 +210,7 @@ bool process_morse()
 
 
 // Check for control messages
-uint16_t check_msg(char const *buf, char *return_ptr = 0, uint16_t *ret_val = 0) {
+uint16_t check_msg(char const *buf, String phone_number, char *return_ptr = 0, uint16_t *ret_val = 0) {
     uint16_t ret = 0;
 
     Serial.print("Checking: ");
@@ -238,13 +240,59 @@ uint16_t check_msg(char const *buf, char *return_ptr = 0, uint16_t *ret_val = 0)
                 morse_smoke.setSpeed((morseTiming_t)wpm_int);
                 morse_light.setSpeed((morseTiming_t)wpm_int);
 
+                String out = "Time is set to ";
+                out.concat(String(wpm_int));
+
+                //Serial.println(wpm_int);
+
+                send_sms(phone_number, out);
+
                 EEPROM.writeInt(EEPROM_MORSE_SPEED_ADDR, wpm_int);
                 ret = wpm_int;
-                return ret;
+                return 1;
+            }
+        }  
+    }
+
+    if (buf[0] == 'P' && buf[1] == 'A' && buf[2] == 'U' && buf[3] == 'S' && buf[5] == '=') {
+        char data[10];
+        int pos = 6;
+        ret = 0;
+        for (int i = 0; i < 10; i++) {
+            char c = buf[i + pos];
+
+            if ((c >= 48 && c <= 57)) {
+                data[i] = c;
+            } 
+            else {
+
+                data[i] = '\0';
+                return_ptr = &data[0];
                 
+                uint16_t wpm_int = atoi(return_ptr);
+                ret_val = &wpm_int;
+                Serial.print("Pause: ");
+                Serial.println(wpm_int);
+
+                //morse.setWPM((morseTiming_t)wpm_int);
+                morse_smoke.set_multi((morseTiming_t)wpm_int);
+                morse_light.set_multi((morseTiming_t)wpm_int);
+
+                String out = "Pause is set to ";
+                out.concat(String(wpm_int));
+
+                //Serial.println(wpm_int);
+
+                send_sms(phone_number, out);
+
+                EEPROM.writeInt(EEPROM_MORSE_PAUSE_ADDR, wpm_int);
+                ret = wpm_int;
+                return 1;
             }
         }
     }
+
+
     return ret;
 }
 

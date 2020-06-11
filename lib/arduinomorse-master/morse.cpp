@@ -20,10 +20,17 @@ int MorseSender::copyTimings(
 			continue;
 		}
 
-		morseTiming_t extra = DIT - (DIT*on_multi);
+		// morseTiming_t extra = DIT - (DIT*on_multi);
 
-		rawOut[2*t] = isDah ? DAH-extra : DIT-extra;
-		rawOut[2*t + 1] = DIT+extra;
+		// rawOut[2*t] = isDah ? DAH-extra : DIT-extra;
+		// rawOut[2*t + 1] = DIT+extra;
+
+		morseTiming_t extra = (morseTiming_t)on_multi;
+
+		rawOut[2*t] = isDah ? DAH : DIT;
+		rawOut[2*t + 1] = DIT + extra;
+
+
 		t++;
 	}
 	return t;
@@ -47,7 +54,7 @@ unsigned int MorseSender::fillTimings(char c)
 		while(t < 5)
 		{
 			morseTiming_t extra = DIT - (DIT*on_multi);
-			timingBuffer[2*t] = ((t < n) == ditsFirst) ? DIT-extra : DAH-extra;
+			timingBuffer[2*t] = ((t < n) == ditsFirst) ? DIT : DAH;
 			timingBuffer[2*t + 1] = DIT+extra;
 			t++;
 		}
