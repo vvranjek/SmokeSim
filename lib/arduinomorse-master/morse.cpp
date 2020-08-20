@@ -87,17 +87,17 @@ unsigned int MorseSender::fillTimings(char c)
 	timingBuffer[2*t] = END;
 
 	
-	Serial.print("Refilled timing buffer for '");
-	Serial.print(c);
-	Serial.print("': ");
+	//Serial.print(F("Refilled timing buffer for '"));
+	//Serial.print(c);
+	//Serial.print(F("': "));
 	int i = start;
 	while(timingBuffer[i] != END)
 	{
-		Serial.print((int)timingBuffer[i]);
-		Serial.print(", ");
+		//Serial.print((int)timingBuffer[i]);
+		//Serial.print(F(", "));
 		i++;
 	}
-	Serial.println("END");
+	//Serial.println(F("END"));
 	
 
 	return start;
@@ -204,7 +204,7 @@ boolean MorseSender::continueSending()
 		//Serial.print("(off) ");
 		setOff();
 	}
-	//Serial.println((int)timingBuffer[timingIndex]);
+	Serial.println((int)timingBuffer[timingIndex]);
 
 	return true;
 }
