@@ -20,15 +20,15 @@ int MorseSender::copyTimings(
 			continue;
 		}
 
-		// morseTiming_t extra = DIT - (DIT*on_multi);
+		// morseTiming_t extra = DIT - (DIT*on_pause);
 
 		// rawOut[2*t] = isDah ? DAH-extra : DIT-extra;
 		// rawOut[2*t + 1] = DIT+extra;
 
-		morseTiming_t extra = (morseTiming_t)on_multi;
+		morseTiming_t extra = (morseTiming_t)on_pause;
 
 		rawOut[2*t] = isDah ? DAH : DIT;
-		rawOut[2*t + 1] = DIT + extra;
+		rawOut[2*t + 1] = on_pause;
 
 
 		t++;
@@ -53,9 +53,8 @@ unsigned int MorseSender::fillTimings(char c)
 		}
 		while(t < 5)
 		{
-			morseTiming_t extra = DIT - (DIT*on_multi);
 			timingBuffer[2*t] = ((t < n) == ditsFirst) ? DIT : DAH;
-			timingBuffer[2*t + 1] = DIT+extra;
+			timingBuffer[2*t + 1] = on_pause;
 			t++;
 		}
 	}
@@ -77,19 +76,19 @@ unsigned int MorseSender::fillTimings(char c)
 			start = t = 1; // start on a space
 		}
 	}
-	morseTiming_t extra = DIT - (DIT*on_multi);
+	morseTiming_t extra = on_pause;
 
 	if (c == 32) {
 		extra = 0.0;
 	}
 
-	timingBuffer[2*t - 1] = DAH+extra;
+	timingBuffer[2*t - 1] = on_pause + extra;
 	timingBuffer[2*t] = END;
 
 	
-	//Serial.print(F("Refilled timing buffer for '"));
-	//Serial.print(c);
-	//Serial.print(F("': "));
+	Serial.print(F("Refilled timing buffer for '"));
+	Serial.print(c);
+	Serial.print(F("': "));
 	int i = start;
 	while(timingBuffer[i] != END)
 	{
@@ -125,8 +124,8 @@ void MorseSender::setWPM(float wpm)
 	setSpeed((morseTiming_t)(1000.0*60.0/(max(1.0f, wpm)*DITS_PER_WORD)));
 }
 
-void MorseSender::set_multi(float multi) {
-	on_multi = multi;
+void MorseSender::set_pause(float pause) {
+	on_pause = pause;
 }
 
 float MorseSender::getWPM() {
@@ -239,9 +238,9 @@ SpeakerMorseSender::SpeakerMorseSender(
 
 void LEDMorseSender::setOn() {  digitalWrite(pin, activeLow ? LOW : HIGH);}
 void LEDMorseSender::setOff() { digitalWrite(pin, activeLow ? HIGH : LOW); }
-LEDMorseSender::LEDMorseSender(int outputPin, float on_multiplier,bool activeLow, float wpm)
+LEDMorseSender::LEDMorseSender(int outputPin, float pause,bool activeLow, float wpm)
 	: MorseSender(outputPin, wpm), activeLow(activeLow) {
-		on_multi = on_multiplier;
+		on_pause = pause;
 	};
 LEDMorseSender::LEDMorseSender(int outputPin, float wpm)
 	: MorseSender(outputPin, wpm), activeLow(false) {};

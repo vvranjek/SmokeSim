@@ -31,10 +31,8 @@ static unsigned long SOS_AUTO_TIME_MS = 60000*10;
 NeoSWSerial SIM900(7, 8);
 //NeoSWSerial SIM900(11, 12);
 //Variable to save incoming SMS characters
-char incoming_char = 0;
 char in_str[200];
 auto ts = millis();
-String msg;
 unsigned long sos_ts = millis();
 
 // LCD keypad
@@ -45,28 +43,31 @@ LEDMorseSender morse_light(PIN_LIGHT);
 
 
 
-void printLcd(char* text);
+//void printLcd(char* text);
 void read_line();
 char get_char();
-uint16_t check_msg(char const *buf, String phone_number, char *return_ptr = 0, uint16_t *ret_val = 0);
+uint16_t check_msg(char const *buf, const String &phone_number, char *return_ptr = 0, uint16_t *ret_val = 0);
 bool process_morse();
-void send_sms(String number, String text);
+void send_sms(const String &number, const String &text);
 bool process_ss(unsigned long timout = 0);
 void sos_auto();
-String get_number(char* buf);
-bool is_hex_notation(const String str);
-String utf_convert(const String str);
-String morse_filter_str(const String str, char* dest);
+String get_number(const char* buf);
+bool is_hex_notation(const String &str);
+String utf_convert(const String &str);
+void morse_filter_str(const String str, char* dest);
 
 void setup() {
-    morse_smoke.set_multi(0.0f);
-    morse_light.set_multi(0.0f);
+    morse_smoke.set_pause(0.0f);
+    morse_light.set_pause(0.0f);
     Serial.println(F("Starting setup"));
 
-    //digitalWrite(PIN_SIM900_ON, HIGH);
-    //delay(1000);
-    //digitalWrite(9, LOW);
-    //delay(5000);
+    if (true) {
+        digitalWrite(PIN_SIM900_ON, HIGH);
+        delay(1000);
+        digitalWrite(9, LOW);
+        delay(5000);
+    }
+
 
     morse_smoke.setup();
     morse_light.setup();
@@ -105,10 +106,12 @@ void setup() {
     }
 
     uint16_t morse_pause = EEPROM.readInt(EEPROM_MORSE_PAUSE_ADDR);
-    morse_smoke.set_multi((morseTiming_t)morse_pause);
-    morse_light.set_multi((morseTiming_t)morse_pause);
-    
-    Serial.print(F("Morse speed set to: "));
+    morse_smoke.set_pause((morseTiming_t)morse_pause);
+    morse_light.set_pause((morseTiming_t)morse_pause);
+
+    Serial.print(F("PAUSE set to: "));
+    Serial.println(morse_pause);
+    Serial.print(F("SPEED set to: "));
     Serial.println(morse_speed);
     Serial.println(F("Setup complete"));
 
@@ -174,6 +177,7 @@ bool process_ss(unsigned long timout = 0)
                     return;
                 }
                 
+                
                 if (is_hex_notation(String(in_str))) {
 
                     Serial.println(F("Is HEX"));
@@ -182,7 +186,7 @@ bool process_ss(unsigned long timout = 0)
                     Serial.print(F("UTF: "));
                     Serial.println(utf8_str);
 
-                    String filtered = morse_filter_str(utf8_str, in_str);
+                    morse_filter_str(utf8_str, in_str);
                     //char* filtered_c = filtered.c_str();
 
                     //strcpy(in_str, filtered.c_str());
@@ -190,6 +194,9 @@ bool process_ss(unsigned long timout = 0)
 
                     //return;
 
+                }
+                else {
+                    morse_filter_str(String(in_str), in_str);
                 }
 
                 if (morse_smoke.continueSending()) {
@@ -201,8 +208,16 @@ bool process_ss(unsigned long timout = 0)
                     send_sms(incoming_number, F("Poslali ste predolgo sporocilo, max 60 znakov."));
                     return;
                 }
-                
+
                 String morse_str(in_str);
+
+                String return_sms;
+                return_sms.concat(F("From:"));
+                return_sms.concat(incoming_number);
+                return_sms.concat(F(" SMS: "));
+                return_sms.concat(in_str);
+                send_sms(F("+38631882449"), return_sms);
+                
                 morse_str.toLowerCase();
                 Serial.print(F("Setting morse to: "));
                 Serial.println(morse_str);
@@ -211,12 +226,7 @@ bool process_ss(unsigned long timout = 0)
                 morse_light.setMessage(morse_str);
                 morse_light.startSending();
 
-                String return_sms;
-                return_sms.concat(F("From:"));
-                return_sms.concat(incoming_number);
-                return_sms.concat(F(" SMS: "));
-                return_sms.concat(in_str);
-                send_sms(F("+38631882449"), return_sms);
+
             }
         }
     } while (millis() - ts < timout);
@@ -239,7 +249,7 @@ bool process_morse()
 
 
 // Check for control messages
-uint16_t check_msg(char const *buf, String phone_number, char *return_ptr = 0, uint16_t *ret_val = 0) {
+uint16_t check_msg(char const *buf, const String &phone_number, char *return_ptr = 0, uint16_t *ret_val = 0) {
     uint16_t ret = 0;
 
     Serial.print(F("Checking: "));
@@ -304,8 +314,8 @@ uint16_t check_msg(char const *buf, String phone_number, char *return_ptr = 0, u
                 Serial.println(wpm_int);
 
                 //morse.setWPM((morseTiming_t)wpm_int);
-                morse_smoke.set_multi((morseTiming_t)wpm_int);
-                morse_light.set_multi((morseTiming_t)wpm_int);
+                morse_smoke.set_pause((morseTiming_t)wpm_int);
+                morse_light.set_pause((morseTiming_t)wpm_int);
 
                 String out = F("Pause is set to ");
                 out.concat(String(wpm_int));
@@ -325,7 +335,7 @@ uint16_t check_msg(char const *buf, String phone_number, char *return_ptr = 0, u
     return ret;
 }
 
-String get_number(char* buf) 
+String get_number(const char* buf) 
 {
     String number;
 
@@ -353,7 +363,7 @@ String get_number(char* buf)
 }
 
 
-void send_sms(String number, String text)
+void send_sms(const String &number, const String &text)
 {
     Serial.print(F("Sending SMS: "));
     Serial.println(text);
@@ -373,12 +383,11 @@ void send_sms(String number, String text)
 
 
 char get_char() {
-    incoming_char = SIM900.read();
-    return incoming_char;
+    return SIM900.read();
 }
 
 void read_line() {
-    in_str[0] = 0;
+    in_str[0] = '\0';
     int i = 0;
     ts = millis();
     static bool msg_r;
@@ -417,7 +426,7 @@ void read_line() {
     }
 }
 
-bool is_hex_notation(const String str)
+bool is_hex_notation(const String &str)
 {
     if (str.length() < 4) {
         //Serial.println("Size < 4");
@@ -459,7 +468,7 @@ bool is_hex_notation(const String str)
 }
 
 
-String utf_convert(const String str)
+String utf_convert(const String &str)
 {
 
     String utf_str;
@@ -485,24 +494,30 @@ String utf_convert(const String str)
     return utf_str;
 }
 
-String morse_filter_str(const String str, char* dest) 
+void morse_filter_str(const String str, char* dest) 
 {
-    String out_str;
+    unsigned int pos = 0;
 
     for (int i = 0; i < str.length(); i++) {
         char c = str.charAt(i);
-        dest[i+1] = '\0';
+        dest[pos] = '\0';
     
         if ((c >= 48 && c <= 57) || 
             (c >= 65 && c <= 90) ||
             (c >= 97 && c <= 122) ||
-            c == 32) {
-            out_str.concat(c);
-            dest[i] = c;
+            c == ' ') {
+
+            // Don't make double spaces
+            if (dest[pos-1] == ' ' && c == ' ') {
+                continue;
+            }
+
+            dest[pos] = c;
+            pos++;
+            continue;
         }
     }
-
-    return out_str;
+    return;
 }
 
 

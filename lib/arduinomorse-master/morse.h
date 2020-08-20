@@ -150,7 +150,7 @@ private:
 	unsigned int fillTimings(char c);
 
 public:
-	float on_multi;
+	float on_pause;
 	/**
 	 * Create a sender which will output to the given pin.
 	 */
@@ -168,7 +168,7 @@ public:
 
 	float getWPM();
 
-	void set_multi(float multi);
+	void set_pause(float pause);
 
 	/**
 	 * Set the duration, in milliseconds, of a DIT.
@@ -259,7 +259,7 @@ class LEDMorseSender: public MorseSender {
 		 * @param activeLow set to true to indicate the LED ON with digital LOW value.  default: false
 		 * @param wpm words per minute, default: WPM_DEFAULT
 		 */
-		LEDMorseSender(int outputPin, float on_multiplier=1.0, bool activeLow = false, float wpm=WPM_DEFAULT);
+		LEDMorseSender(int outputPin, float set_pause=1.0, bool activeLow = false, float wpm=WPM_DEFAULT);
 
 		/**
 		 * Creates a LED Morse code sender with the given GPIO pin.  This constructor is for backward compability.
