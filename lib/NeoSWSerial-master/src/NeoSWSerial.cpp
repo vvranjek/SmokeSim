@@ -69,7 +69,7 @@ static uint8_t prev_t0;  // previous RX transition: timer0 time stamp (4us)
 static uint8_t rxMask;   // bit mask for building received character
 static uint8_t rxValue;  // character being built
 
-static const uint8_t RX_BUFFER_SIZE = 64;  // power of 2 for optimal speed
+static const uint8_t RX_BUFFER_SIZE = 128;  // power of 2 for optimal speed
 static uint8_t rxBuffer[RX_BUFFER_SIZE];
 static uint8_t rxHead;   // buffer pointer input
 static uint8_t rxTail;   // buffer pointer output

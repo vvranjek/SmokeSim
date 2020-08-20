@@ -61,10 +61,10 @@ void setup() {
     morse_light.set_multi(0.0f);
     Serial.println("Starting setup");
 
-    digitalWrite(PIN_SIM900_ON, HIGH);
-    delay(1000);
-    digitalWrite(9, LOW);
-    delay(5000);
+    //digitalWrite(PIN_SIM900_ON, HIGH);
+    //delay(1000);
+    //digitalWrite(9, LOW);
+    //delay(5000);
 
     morse_smoke.setup();
     morse_light.setup();
